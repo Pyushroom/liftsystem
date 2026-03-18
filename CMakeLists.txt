@@ -16,6 +16,7 @@ option(ENABLE_SANITIZERS "Enable sanitizers in Debug builds" OFF)
 
 set(SOURCES
     src/main.cpp
+    src/scheduler.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
