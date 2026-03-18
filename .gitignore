@@ -1,0 +1,17 @@
+/build/
+/out/
+/.vscode/*.db
+.vscode/ipch/
+/.cache/
+/compile_commands.json
+
+*.o
+*.obj
+*.exe
+*.out
+*.dll
+*.so
+*.a
+*.lib
+
+.DS_Store
