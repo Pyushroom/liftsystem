@@ -18,6 +18,7 @@ set(SOURCES
     src/main.cpp
     src/scheduler.cpp
     src/buffer_manager.cpp
+    src/controller.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
