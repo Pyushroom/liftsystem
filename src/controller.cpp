@@ -61,19 +61,20 @@ void ElevatorController::step() {
 void ElevatorController::handleIdle(const Inputs&, Outputs&) {
     int currentFloor = hardware_.currentFloor();
 
-    // 1. Jeśli mamy palety na pokładzie → jedź je rozładować
-    if (!buffer_.empty()) {
-        targetFloor_ = chooseNextTarget(currentFloor);
-
-        if (targetFloor_ != currentFloor) {
-            mode_ = ElevatorMode::Moving;
-            return;
-        }
+    // 1. Najpierw rozładuj to co już jest na windzie
+    if (buffer_.hasPalletForFloor(currentFloor)) {
+        mode_ = ElevatorMode::Unloading;
+        return;
     }
 
-    // 2. Jeśli mamy zadanie → jedź do source
+    // 2. Obsłuż nowe zadanie (załadunek)
     auto task = scheduler_.currentTask();
     if (task.has_value()) {
+        if (currentFloor == task->sourceFloor && buffer_.canLoad()) {
+            mode_ = ElevatorMode::Loading;
+            return;
+        }
+
         if (currentFloor != task->sourceFloor) {
             targetFloor_ = task->sourceFloor;
             mode_ = ElevatorMode::Moving;
@@ -81,7 +82,13 @@ void ElevatorController::handleIdle(const Inputs&, Outputs&) {
         }
     }
 
-    // 3. W przeciwnym razie zostajemy idle
+    // 3. Jeśli mamy palety, ale nie na tym piętrze → jedź je rozładować
+    if (!buffer_.empty()) {
+        targetFloor_ = chooseNextTarget(currentFloor);
+        if (targetFloor_ != currentFloor) {
+            mode_ = ElevatorMode::Moving;
+        }
+    }
 }
 
 void ElevatorController::handleMoving(const Inputs& in, Outputs& out) {
@@ -110,12 +117,50 @@ void ElevatorController::handleMoving(const Inputs& in, Outputs& out) {
     }
 }
 
-void ElevatorController::handleLoading(const Inputs&, Outputs&) {
-    // To be implemented
+void ElevatorController::handleLoading(const Inputs& in, Outputs& out) {
+    out.doorOpen = true;
+    out.conveyorLoad = true;
+
+    auto task = scheduler_.currentTask();
+    if (!task.has_value()) {
+        mode_ = ElevatorMode::Idle;
+        return;
+    }
+
+    // Symulacja: jeśli stacja gotowa → załaduj paletę
+    if (in.loadStationReady && buffer_.canLoad()) {
+        buffer_.loadPallet(Pallet{
+            task->palletId,
+            task->sourceFloor,
+            task->destinationFloor
+        });
+
+        std::cout << "[LOAD] Pallet " << task->palletId
+                  << " loaded at floor " << task->sourceFloor
+                  << " -> target " << task->destinationFloor << "\n";
+
+        scheduler_.completeCurrentTask();
+
+        mode_ = ElevatorMode::Idle;
+    }
 }
 
-void ElevatorController::handleUnloading(const Inputs&, Outputs&) {
-    // To be implemented
+void ElevatorController::handleUnloading(const Inputs& in, Outputs& out) {
+    out.doorOpen = true;
+    out.conveyorUnload = true;
+
+    int currentFloor = hardware_.currentFloor();
+
+    if (in.unloadStationReady) {
+        auto pallet = buffer_.unloadForFloor(currentFloor);
+
+        if (pallet.has_value()) {
+            std::cout << "[UNLOAD] Pallet " << pallet->id
+                      << " unloaded at floor " << currentFloor << "\n";
+        }
+
+        mode_ = ElevatorMode::Idle;
+    }
 }
 
 void ElevatorController::handleFault(Outputs& out) {
