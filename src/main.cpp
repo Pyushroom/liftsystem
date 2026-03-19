@@ -19,8 +19,10 @@ int main() {
     controller.addTask({2, 1, 4});
     controller.addTask({3, 2, 0});
 
+    constexpr double dt = 0.1; // 100 ms
+
     // 4. Simulation loop
-    for (int tick = 0; tick < 30; ++tick) {
+    for (int tick = 0; tick < 100; ++tick) {
         std::cout << "\n=== TICK " << tick << " ===\n";
 
         // Simulate stations ready
@@ -31,9 +33,9 @@ int main() {
         controller.step();
 
         // Update simulation (movement)
-        simulator.update();
+        simulator.update(dt);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     std::cout << "\nSimulation finished.\n";
