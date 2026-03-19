@@ -105,8 +105,15 @@ double ElevatorSimulator::floorToPosition(int floor) const {
 }
 
 int ElevatorSimulator::positionToFloor(double position) const {
-    int f = static_cast<int>(std::round(position / floorHeight_));
-    if (f < 0) f = 0;
-    if (f >= floors_) f = floors_ - 1;
+    int f = static_cast<int>(std::floor(position / floorHeight_));
+
+    if (f < 0) {
+        f = 0;
+    }
+
+    if (f >= floors_) {
+        f = floors_ - 1;
+    }
+
     return f;
 }

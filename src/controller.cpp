@@ -98,7 +98,7 @@ void ElevatorController::handleMoving(const Inputs& in, Outputs& out) {
         return;
     }
 
-    // Jeśli jesteśmy na celu → stop
+    // KLUCZOWE: używamy precyzyjnego sprawdzenia
     if (hardware_.isAtFloor(targetFloor_)) {
         out.motorDirection = Direction::Stop;
         out.brakeReleased = false;
@@ -107,9 +107,11 @@ void ElevatorController::handleMoving(const Inputs& in, Outputs& out) {
         return;
     }
 
-    int currentFloor = hardware_.currentFloor();
-
     out.brakeReleased = true;
+
+    
+
+    int currentFloor = hardware_.currentFloor();
 
     if (targetFloor_ > currentFloor) {
         out.motorDirection = Direction::Up;
