@@ -1,5 +1,6 @@
 #include "controller.hpp"
 #include "simulator.hpp"
+#include "renderer.hpp"
 
 #include <chrono>
 #include <thread>
@@ -8,37 +9,34 @@
 int main() {
     std::cout << "Starting pallet elevator simulation...\n";
 
-    // 1. Create simulator (hardware layer)
     ElevatorSimulator simulator(5);
-
-    // 2. Create controller
     ElevatorController controller(simulator, 3);
+    Renderer renderer(1000, 700);
 
-    // 3. Add transport tasks
     controller.addTask({1, 0, 3});
     controller.addTask({2, 1, 4});
     controller.addTask({3, 2, 0});
 
-    constexpr double dt = 0.1; // 100 ms
+    constexpr double dt = 0.1;
 
-    // 4. Simulation loop
-    for (int tick = 0; tick < 100; ++tick) {
+    int tick = 0;
+    while (renderer.isOpen() && tick < 160) {
         std::cout << "\n=== TICK " << tick << " ===\n";
 
-        // Simulate stations ready
+        renderer.processEvents();
+
         simulator.setLoadStationReady(true);
         simulator.setUnloadStationReady(true);
 
-        // Run controller logic
         controller.step();
-
-        // Update simulation (movement)
         simulator.update(dt);
 
+        renderer.draw();
+
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        ++tick;
     }
 
     std::cout << "\nSimulation finished.\n";
-
     return 0;
 }

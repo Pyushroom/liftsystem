@@ -14,12 +14,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(ENABLE_WARNINGS "Enable extra compiler warnings" ON)
 option(ENABLE_SANITIZERS "Enable sanitizers in Debug builds" OFF)
 
+find_package(SFML CONFIG REQUIRED COMPONENTS Graphics Window System)
+
 set(SOURCES
     src/main.cpp
     src/scheduler.cpp
     src/buffer_manager.cpp
     src/controller.cpp
     src/simulator.cpp
+    src/renderer.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -27,6 +30,13 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
+)
+
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        SFML::Graphics
+        SFML::Window
+        SFML::System
 )
 
 if(ENABLE_WARNINGS)
