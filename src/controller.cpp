@@ -55,15 +55,59 @@ void ElevatorController::step() {
 }
 
 // ==========================
-// Handlers (empty for now)
+// Handlers 
 // ==========================
 
 void ElevatorController::handleIdle(const Inputs&, Outputs&) {
-    // To be implemented
+    int currentFloor = hardware_.currentFloor();
+
+    // 1. Jeśli mamy palety na pokładzie → jedź je rozładować
+    if (!buffer_.empty()) {
+        targetFloor_ = chooseNextTarget(currentFloor);
+
+        if (targetFloor_ != currentFloor) {
+            mode_ = ElevatorMode::Moving;
+            return;
+        }
+    }
+
+    // 2. Jeśli mamy zadanie → jedź do source
+    auto task = scheduler_.currentTask();
+    if (task.has_value()) {
+        if (currentFloor != task->sourceFloor) {
+            targetFloor_ = task->sourceFloor;
+            mode_ = ElevatorMode::Moving;
+            return;
+        }
+    }
+
+    // 3. W przeciwnym razie zostajemy idle
 }
 
-void ElevatorController::handleMoving(const Inputs&, Outputs&) {
-    // To be implemented
+void ElevatorController::handleMoving(const Inputs& in, Outputs& out) {
+    if (!in.doorClosed) {
+        mode_ = ElevatorMode::Fault;
+        return;
+    }
+
+    // Jeśli jesteśmy na celu → stop
+    if (hardware_.isAtFloor(targetFloor_)) {
+        out.motorDirection = Direction::Stop;
+        out.brakeReleased = false;
+
+        mode_ = ElevatorMode::Idle;
+        return;
+    }
+
+    int currentFloor = hardware_.currentFloor();
+
+    out.brakeReleased = true;
+
+    if (targetFloor_ > currentFloor) {
+        out.motorDirection = Direction::Up;
+    } else {
+        out.motorDirection = Direction::Down;
+    }
 }
 
 void ElevatorController::handleLoading(const Inputs&, Outputs&) {
@@ -88,4 +132,21 @@ void ElevatorController::handleEmergency(Outputs& out) {
     out.alarm = true;
 
     std::cout << "[EMERGENCY] Emergency stop active\n";
+}
+
+int ElevatorController::chooseNextTarget(int currentFloor) const {
+    // Jeśli mamy palety → jedź do pierwszego celu
+    if (!buffer_.empty()) {
+        for (const auto& pallet : buffer_.pallets()) {
+            return pallet.destinationFloor;
+        }
+    }
+
+    // Jeśli nie, jedź po nowe zadanie
+    auto task = scheduler_.currentTask();
+    if (task.has_value()) {
+        return task->sourceFloor;
+    }
+
+    return currentFloor;
 }

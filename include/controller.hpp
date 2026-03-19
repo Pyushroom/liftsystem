@@ -38,6 +38,8 @@ private:
     void handleFault(Outputs& out);
     void handleEmergency(Outputs& out);
 
+    int chooseNextTarget(int currentFloor) const;
+
 private:
     IElevatorHardware& hardware_;
     Scheduler scheduler_;
