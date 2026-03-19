@@ -39,6 +39,7 @@ private:
     void handleEmergency(Outputs& out);
 
     int chooseNextTarget(int currentFloor) const;
+    void printStatus() const;
 
 private:
     IElevatorHardware& hardware_;

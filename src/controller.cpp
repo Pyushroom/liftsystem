@@ -52,6 +52,7 @@ void ElevatorController::step() {
 
     // 5. Apply outputs
     hardware_.applyOutputs(out);
+    printStatus();
 }
 
 // ==========================
@@ -194,4 +195,12 @@ int ElevatorController::chooseNextTarget(int currentFloor) const {
     }
 
     return currentFloor;
+}
+
+void ElevatorController::printStatus() const {
+    std::cout << "[STATUS] Floor=" << hardware_.currentFloor()
+              << " Mode=" << toString(mode_)
+              << " Target=" << targetFloor_
+              << " Buffer=" << buffer_.size()
+              << "\n";
 }
