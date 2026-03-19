@@ -28,6 +28,7 @@ public:
 
     // Debug / visualization
     double positionMeters() const;
+    int floors() const;
 
 private:
     double floorToPosition(int floor) const;

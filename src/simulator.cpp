@@ -100,6 +100,10 @@ double ElevatorSimulator::positionMeters() const {
     return position_;
 }
 
+int ElevatorSimulator::floors() const {
+    return floors_;
+}
+
 double ElevatorSimulator::floorToPosition(int floor) const {
     return static_cast<double>(floor) * floorHeight_;
 }

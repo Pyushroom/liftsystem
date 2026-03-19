@@ -20,7 +20,7 @@ int main() {
     constexpr double dt = 0.1;
 
     int tick = 0;
-    while (renderer.isOpen() && tick < 160) {
+    while (renderer.isOpen() && tick < 230) {
         std::cout << "\n=== TICK " << tick << " ===\n";
 
         renderer.processEvents();
@@ -31,7 +31,7 @@ int main() {
         controller.step();
         simulator.update(dt);
 
-        renderer.draw();
+        renderer.draw(simulator);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         ++tick;
