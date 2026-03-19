@@ -77,19 +77,32 @@ void Renderer::drawFloors(const ElevatorSimulator& simulator) {
 void Renderer::drawElevator(const ElevatorSimulator& simulator) {
     const float cabinWidth = 110.0f;
     const float cabinHeight = 60.0f;
+    const float platformHeight = 10.0f;
+    const float platformOffsetX = 5.0f;
+    const float platformOffsetY = cabinHeight - 12.0f;
 
-    const float maxPosition =
-        static_cast<float>((simulator.floors() - 1) * 3.0);
+    const int floors = simulator.floors();
+
+    // Pozycja piętra 0 i najwyższego piętra w układzie renderera
+    const float yFloor0 = floorY(0, floors);
+    const float yTopFloor = floorY(floors - 1, floors);
+
+    // Zakres fizyczny ruchu
+    const float maxPhysicalPos = static_cast<float>((floors - 1) * 3.0);
 
     float normalized = 0.0f;
-    if (maxPosition > 0.0f) {
-        normalized = static_cast<float>(simulator.positionMeters()) / maxPosition;
+    if (maxPhysicalPos > 0.0f) {
+        normalized = static_cast<float>(simulator.positionMeters()) / maxPhysicalPos;
     }
 
-    const float minY = shaftTop_ + shaftHeight_ - cabinHeight;
-    const float maxTravel = shaftHeight_ - cabinHeight;
-    const float cabinY = minY - normalized * maxTravel;
+    // Aktualna wysokość platformy windy w pikselach:
+    // platforma ma dokładnie trafiać w linię piętra
+    const float platformSurfaceY = yFloor0 - normalized * (yFloor0 - yTopFloor);
+
     const float cabinX = shaftLeft_ + (shaftWidth_ - cabinWidth) / 2.0f;
+
+    // Kabina jest rysowana tak, żeby platforma była na platformSurfaceY
+    const float cabinY = platformSurfaceY - platformOffsetY;
 
     sf::RectangleShape cabin(sf::Vector2f(cabinWidth, cabinHeight));
     cabin.setPosition(sf::Vector2f(cabinX, cabinY));
@@ -98,8 +111,8 @@ void Renderer::drawElevator(const ElevatorSimulator& simulator) {
     cabin.setOutlineColor(sf::Color::White);
     window_.draw(cabin);
 
-    sf::RectangleShape platform(sf::Vector2f(cabinWidth - 10.0f, 10.0f));
-    platform.setPosition(sf::Vector2f(cabinX + 5.0f, cabinY + cabinHeight - 12.0f));
+    sf::RectangleShape platform(sf::Vector2f(cabinWidth - 10.0f, platformHeight));
+    platform.setPosition(sf::Vector2f(cabinX + platformOffsetX, cabinY + platformOffsetY));
     platform.setFillColor(sf::Color(70, 70, 70));
     window_.draw(platform);
 }
