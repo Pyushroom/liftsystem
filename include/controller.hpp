@@ -24,6 +24,9 @@ public:
 
     const BufferManager& buffer() const;
 
+    ElevatorMode mode() const;
+    int targetFloor() const;
+
 private:
     // Internal states of controller
     enum class PendingAction {

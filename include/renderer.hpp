@@ -19,6 +19,8 @@ private:
     void drawElevator(const ElevatorSimulator& simulator);
     void drawPallets(const ElevatorSimulator& simulator, const ElevatorController& controller);
 
+    void drawUI(const ElevatorSimulator& simulator, const ElevatorController& controller);
+
 private:
     sf::RenderWindow window_;
 

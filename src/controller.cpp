@@ -210,3 +210,11 @@ void ElevatorController::printStatus() const {
 const BufferManager& ElevatorController::buffer() const {
     return buffer_;
 }
+
+ElevatorMode ElevatorController::mode() const {
+    return mode_;
+}
+
+int ElevatorController::targetFloor() const {
+    return targetFloor_;
+}

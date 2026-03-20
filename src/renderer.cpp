@@ -27,7 +27,8 @@ void Renderer::draw(const ElevatorSimulator& simulator, const ElevatorController
     drawFloors(simulator);
     drawElevator(simulator);
     drawPallets(simulator, controller);
-    
+    drawUI(simulator, controller);
+
     window_.display();
 }
 
@@ -166,4 +167,42 @@ void Renderer::drawPallets(const ElevatorSimulator& simulator,
 
         ++i;
     }
+}
+
+void Renderer::drawUI(const ElevatorSimulator& simulator,
+                      const ElevatorController& controller) {
+
+    // Panel tło
+    sf::RectangleShape panel(sf::Vector2f(280.0f, shaftHeight_));
+    panel.setPosition(sf::Vector2f(450.0f, shaftTop_));
+    panel.setFillColor(sf::Color(40, 40, 48));
+    panel.setOutlineThickness(2.0f);
+    panel.setOutlineColor(sf::Color(150, 150, 150));
+
+    window_.draw(panel);
+
+    // Tekst (bez fontów na razie → prosty debug styl)
+    const int floor = simulator.currentFloor();
+    const int target = controller.targetFloor();
+    const int palletCount = static_cast<int>(controller.buffer().size());
+
+    // Debug info jako prostokąty (placeholder UI)
+    float y = shaftTop_ + 20.0f;
+
+    auto drawBar = [&](float value, sf::Color color) {
+        sf::RectangleShape bar(sf::Vector2f(value, 20.0f));
+        bar.setPosition(sf::Vector2f(470.0f, y));
+        bar.setFillColor(color);
+        window_.draw(bar);
+        y += 30.0f;
+    };
+
+    // Floor (zielony)
+    drawBar(static_cast<float>(floor) * 40.0f, sf::Color(60, 170, 90));
+
+    // Target (niebieski)
+    drawBar(static_cast<float>(target) * 40.0f, sf::Color(80, 120, 220));
+
+    // Pallets (brązowy)
+    drawBar(static_cast<float>(palletCount) * 40.0f, sf::Color(160, 110, 60));
 }
