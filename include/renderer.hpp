@@ -2,6 +2,7 @@
 
 #include <SFML/Graphics.hpp>
 #include "simulator.hpp"
+#include "controller.hpp"
 
 class Renderer {
 public:
@@ -9,14 +10,14 @@ public:
 
     bool isOpen() const;
     void processEvents();
-    void draw(const ElevatorSimulator& simulator);
+    void draw(const ElevatorSimulator& simulator, const ElevatorController& controller);
 
 private:
     float floorY(int floor, int totalFloors) const;
     void drawShaft();
     void drawFloors(const ElevatorSimulator& simulator);
     void drawElevator(const ElevatorSimulator& simulator);
-    void drawPallets(const ElevatorSimulator& simulator);
+    void drawPallets(const ElevatorSimulator& simulator, const ElevatorController& controller);
 
 private:
     sf::RenderWindow window_;

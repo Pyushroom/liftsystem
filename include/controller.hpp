@@ -22,6 +22,8 @@ public:
     // Main control loop step (called periodically)
     void step();
 
+    const BufferManager& buffer() const;
+
 private:
     // Internal states of controller
     enum class PendingAction {

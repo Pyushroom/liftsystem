@@ -31,7 +31,7 @@ int main() {
         controller.step();
         simulator.update(dt);
 
-        renderer.draw(simulator);
+        renderer.draw(simulator, controller);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         ++tick;

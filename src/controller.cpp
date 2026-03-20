@@ -206,3 +206,7 @@ void ElevatorController::printStatus() const {
               << " Buffer=" << buffer_.size()
               << "\n";
 }
+
+const BufferManager& ElevatorController::buffer() const {
+    return buffer_;
+}

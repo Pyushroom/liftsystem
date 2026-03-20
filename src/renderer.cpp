@@ -20,14 +20,14 @@ void Renderer::processEvents() {
     }
 }
 
-void Renderer::draw(const ElevatorSimulator& simulator) {
+void Renderer::draw(const ElevatorSimulator& simulator, const ElevatorController& controller) {
     window_.clear(sf::Color(30, 30, 35));
 
     drawShaft();
     drawFloors(simulator);
     drawElevator(simulator);
-    drawPallets(simulator);
-
+    drawPallets(simulator, controller);
+    
     window_.display();
 }
 
@@ -118,11 +118,9 @@ void Renderer::drawElevator(const ElevatorSimulator& simulator) {
     window_.draw(platform);
 }
 
-void Renderer::drawPallets(const ElevatorSimulator& simulator) {
-    const int palletCount = static_cast<int>(simulator.currentFloor()); // TEMP (zaraz poprawimy)
-
-    // Na razie: fake liczba palet żeby zobaczyć efekt
-    // Docelowo podłączymy BufferManager
+void Renderer::drawPallets(const ElevatorSimulator& simulator,
+                          const ElevatorController& controller) {
+    const auto& pallets = controller.buffer().pallets();
 
     const float cabinWidth = 110.0f;
     const float cabinHeight = 60.0f;
@@ -146,27 +144,26 @@ void Renderer::drawPallets(const ElevatorSimulator& simulator) {
     }
 
     const float platformSurfaceY = yFloor0 - normalized * (yFloor0 - yTopFloor);
-
     const float cabinY = platformSurfaceY - platformOffsetY;
 
-    // Rysujemy kilka "palet"
-    const int maxPallets = 3;
+    int i = 0;
+    for (const auto& pallet : pallets) {
+        sf::RectangleShape rect(sf::Vector2f(28.0f, 18.0f));
 
-    for (int i = 0; i < maxPallets; ++i) {
-        sf::RectangleShape pallet(sf::Vector2f(28.0f, 18.0f));
-
-        float offsetX = 12.0f + i * 32.0f;
+        float offsetX = 12.0f + static_cast<float>(i) * 32.0f;
         float offsetY = -18.0f;
 
-        pallet.setPosition(sf::Vector2f(
+        rect.setPosition(sf::Vector2f(
             cabinX + offsetX,
             cabinY + platformOffsetY + offsetY
         ));
 
-        pallet.setFillColor(sf::Color(160, 110, 60));
-        pallet.setOutlineThickness(1.0f);
-        pallet.setOutlineColor(sf::Color::Black);
+        rect.setFillColor(sf::Color(160, 110, 60));
+        rect.setOutlineThickness(1.0f);
+        rect.setOutlineColor(sf::Color::Black);
 
-        window_.draw(pallet);
+        window_.draw(rect);
+
+        ++i;
     }
 }
