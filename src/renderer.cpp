@@ -26,6 +26,7 @@ void Renderer::draw(const ElevatorSimulator& simulator) {
     drawShaft();
     drawFloors(simulator);
     drawElevator(simulator);
+    drawPallets(simulator);
 
     window_.display();
 }
@@ -115,4 +116,57 @@ void Renderer::drawElevator(const ElevatorSimulator& simulator) {
     platform.setPosition(sf::Vector2f(cabinX + platformOffsetX, cabinY + platformOffsetY));
     platform.setFillColor(sf::Color(70, 70, 70));
     window_.draw(platform);
+}
+
+void Renderer::drawPallets(const ElevatorSimulator& simulator) {
+    const int palletCount = static_cast<int>(simulator.currentFloor()); // TEMP (zaraz poprawimy)
+
+    // Na razie: fake liczba palet żeby zobaczyć efekt
+    // Docelowo podłączymy BufferManager
+
+    const float cabinWidth = 110.0f;
+    const float cabinHeight = 60.0f;
+
+    const float platformOffsetX = 5.0f;
+    const float platformOffsetY = cabinHeight - 12.0f;
+
+    const float cabinX = shaftLeft_ + (shaftWidth_ - cabinWidth) / 2.0f;
+
+    const int floors = simulator.floors();
+
+    const float yFloor0 = floorY(0, floors);
+    const float yTopFloor = floorY(floors - 1, floors);
+
+    const float maxPhysicalPos =
+        static_cast<float>((floors - 1) * 3.0);
+
+    float normalized = 0.0f;
+    if (maxPhysicalPos > 0.0f) {
+        normalized = static_cast<float>(simulator.positionMeters()) / maxPhysicalPos;
+    }
+
+    const float platformSurfaceY = yFloor0 - normalized * (yFloor0 - yTopFloor);
+
+    const float cabinY = platformSurfaceY - platformOffsetY;
+
+    // Rysujemy kilka "palet"
+    const int maxPallets = 3;
+
+    for (int i = 0; i < maxPallets; ++i) {
+        sf::RectangleShape pallet(sf::Vector2f(28.0f, 18.0f));
+
+        float offsetX = 12.0f + i * 32.0f;
+        float offsetY = -18.0f;
+
+        pallet.setPosition(sf::Vector2f(
+            cabinX + offsetX,
+            cabinY + platformOffsetY + offsetY
+        ));
+
+        pallet.setFillColor(sf::Color(160, 110, 60));
+        pallet.setOutlineThickness(1.0f);
+        pallet.setOutlineColor(sf::Color::Black);
+
+        window_.draw(pallet);
+    }
 }

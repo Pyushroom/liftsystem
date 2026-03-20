@@ -16,6 +16,7 @@ private:
     void drawShaft();
     void drawFloors(const ElevatorSimulator& simulator);
     void drawElevator(const ElevatorSimulator& simulator);
+    void drawPallets(const ElevatorSimulator& simulator);
 
 private:
     sf::RenderWindow window_;
