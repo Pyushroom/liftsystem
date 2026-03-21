@@ -16,12 +16,45 @@ bool Renderer::isOpen() const {
     return window_.isOpen();
 }
 
-void Renderer::processEvents() {
+InputState Renderer::processEvents() {
+    InputState input{};
+
     while (const std::optional event = window_.pollEvent()) {
         if (event->is<sf::Event::Closed>()) {
+            input.close = true;
             window_.close();
         }
+
+        if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
+            switch (key->code) {
+                case sf::Keyboard::Key::Escape:
+                    input.close = true;
+                    window_.close();
+                    break;
+
+                case sf::Keyboard::Key::Space:
+                    input.togglePause = true;
+                    break;
+
+                case sf::Keyboard::Key::E:
+                    input.emergencyStop = true;
+                    break;
+
+                case sf::Keyboard::Key::R:
+                    input.resetEmergency = true;
+                    break;
+
+                case sf::Keyboard::Key::T:
+                    input.addTask = true;
+                    break;
+
+                default:
+                    break;
+            }
+        }
     }
+
+    return input;
 }
 
 void Renderer::draw(const ElevatorSimulator& simulator, const ElevatorController& controller) {
@@ -31,6 +64,7 @@ void Renderer::draw(const ElevatorSimulator& simulator, const ElevatorController
     drawFloors(simulator);
     drawElevator(simulator);
     drawPallets(simulator, controller);
+    drawTransferPallet(simulator, controller);
     drawUI(simulator, controller);
 
     window_.display();
@@ -124,24 +158,20 @@ void Renderer::drawElevator(const ElevatorSimulator& simulator) {
 }
 
 void Renderer::drawPallets(const ElevatorSimulator& simulator,
-                          const ElevatorController& controller) {
+                           const ElevatorController& controller) {
     const auto& pallets = controller.buffer().pallets();
+    const TransferVisual transfer = controller.transferVisual();
 
     const float cabinWidth = 110.0f;
     const float cabinHeight = 60.0f;
-
-    const float platformOffsetX = 5.0f;
     const float platformOffsetY = cabinHeight - 12.0f;
-
     const float cabinX = shaftLeft_ + (shaftWidth_ - cabinWidth) / 2.0f;
 
     const int floors = simulator.floors();
 
     const float yFloor0 = floorY(0, floors);
     const float yTopFloor = floorY(floors - 1, floors);
-
-    const float maxPhysicalPos =
-        static_cast<float>((floors - 1) * 3.0);
+    const float maxPhysicalPos = static_cast<float>((floors - 1) * 3.0);
 
     float normalized = 0.0f;
     if (maxPhysicalPos > 0.0f) {
@@ -151,11 +181,15 @@ void Renderer::drawPallets(const ElevatorSimulator& simulator,
     const float platformSurfaceY = yFloor0 - normalized * (yFloor0 - yTopFloor);
     const float cabinY = platformSurfaceY - platformOffsetY;
 
-    int i = 0;
+    int visibleIndex = 0;
     for (const auto& pallet : pallets) {
+        if (transfer.active && !transfer.loading && pallet.id == transfer.palletId) {
+            continue;
+        }
+
         sf::RectangleShape rect(sf::Vector2f(28.0f, 18.0f));
 
-        float offsetX = 12.0f + static_cast<float>(i) * 32.0f;
+        float offsetX = 12.0f + static_cast<float>(visibleIndex) * 32.0f;
         float offsetY = -18.0f;
 
         rect.setPosition(sf::Vector2f(
@@ -168,38 +202,52 @@ void Renderer::drawPallets(const ElevatorSimulator& simulator,
         rect.setOutlineColor(sf::Color::Black);
 
         window_.draw(rect);
-
-        ++i;
+        ++visibleIndex;
     }
 }
 
 void Renderer::drawUI(const ElevatorSimulator& simulator,
                       const ElevatorController& controller) {
 
-    // Panel tło
     sf::RectangleShape panel(sf::Vector2f(280.0f, shaftHeight_));
     panel.setPosition(sf::Vector2f(450.0f, shaftTop_));
     panel.setFillColor(sf::Color(40, 40, 48));
     panel.setOutlineThickness(2.0f);
     panel.setOutlineColor(sf::Color(150, 150, 150));
-
     window_.draw(panel);
 
-    // Tekst (bez fontów na razie → prosty debug styl)
     const int floor = simulator.currentFloor();
     const int target = controller.targetFloor();
-    const int palletCount = static_cast<int>(controller.buffer().size());
+    const int pallets = static_cast<int>(controller.buffer().size());
 
-    const std::string modeStr = toString(controller.mode());
+    const ElevatorMode mode = controller.mode();
+    const std::string modeStr = toString(mode);
 
-    // Debug info jako prostokąty (placeholder UI)
+    sf::Color stateColor = sf::Color::White;
+    switch (mode) {
+        case ElevatorMode::Idle:
+            stateColor = sf::Color(60, 170, 90);
+            break;
+        case ElevatorMode::Moving:
+            stateColor = sf::Color(80, 120, 220);
+            break;
+        case ElevatorMode::Loading:
+        case ElevatorMode::Unloading:
+            stateColor = sf::Color(220, 190, 80);
+            break;
+        case ElevatorMode::Fault:
+        case ElevatorMode::EmergencyStop:
+            stateColor = sf::Color(220, 70, 70);
+            break;
+    }
+
     float y = shaftTop_ + 20.0f;
 
-    auto drawText = [&](const std::string& label) {
+    auto drawText = [&](const std::string& label, sf::Color color = sf::Color::White) {
         sf::Text text(font_);
         text.setString(label);
         text.setCharacterSize(18);
-        text.setFillColor(sf::Color::White);
+        text.setFillColor(color);
         text.setPosition(sf::Vector2f(470.0f, y));
 
         window_.draw(text);
@@ -209,8 +257,77 @@ void Renderer::drawUI(const ElevatorSimulator& simulator,
     drawText("Elevator Status");
     y += 10.0f;
 
+    // kolorowy wskaźnik stanu
+    sf::CircleShape indicator(10.0f);
+    indicator.setPosition(sf::Vector2f(470.0f, y + 4.0f));
+    indicator.setFillColor(stateColor);
+    window_.draw(indicator);
+
+    sf::Text modeText(font_);
+    modeText.setString("Mode: " + modeStr);
+    modeText.setCharacterSize(18);
+    modeText.setFillColor(stateColor);
+    modeText.setPosition(sf::Vector2f(500.0f, y));
+    window_.draw(modeText);
+
+    y += 40.0f;
+
     drawText("Floor: " + std::to_string(floor));
     drawText("Target: " + std::to_string(target));
-    drawText("Mode: " + modeStr);
-    drawText("Pallets: " + std::to_string(palletCount));
+    drawText("Pallets: " + std::to_string(pallets));
+}
+
+void Renderer::drawTransferPallet(const ElevatorSimulator& simulator,
+                                  const ElevatorController& controller) {
+    const TransferVisual transfer = controller.transferVisual();
+    if (!transfer.active) {
+        return;
+    }
+
+    const int floors = simulator.floors();
+    const float currentFloorY = floorY(simulator.currentFloor(), floors);
+
+    const float cabinWidth = 110.0f;
+    const float cabinHeight = 60.0f;
+    const float platformOffsetY = cabinHeight - 12.0f;
+
+    const float cabinX = shaftLeft_ + (shaftWidth_ - cabinWidth) / 2.0f;
+
+    const float yFloor0 = floorY(0, floors);
+    const float yTopFloor = floorY(floors - 1, floors);
+    const float maxPhysicalPos = static_cast<float>((floors - 1) * 3.0);
+
+    float normalized = 0.0f;
+    if (maxPhysicalPos > 0.0f) {
+        normalized = static_cast<float>(simulator.positionMeters()) / maxPhysicalPos;
+    }
+
+    const float platformSurfaceY = yFloor0 - normalized * (yFloor0 - yTopFloor);
+    const float cabinY = platformSurfaceY - platformOffsetY;
+
+    const float stationStartX = 430.0f;
+    const float stationY = currentFloorY - 18.0f;
+
+    const float platformX = cabinX + 12.0f;
+    const float platformY = cabinY + platformOffsetY - 18.0f;
+
+    const float p = static_cast<float>(transfer.progress);
+
+    float x = 0.0f;
+    float y = 0.0f;
+
+    if (transfer.loading) {
+        x = stationStartX + (platformX - stationStartX) * p;
+        y = stationY + (platformY - stationY) * p;
+    } else {
+        x = platformX + (stationStartX - platformX) * p;
+        y = platformY + (stationY - platformY) * p;
+    }
+
+    sf::RectangleShape rect(sf::Vector2f(28.0f, 18.0f));
+    rect.setPosition(sf::Vector2f(x, y));
+    rect.setFillColor(sf::Color(190, 130, 70));
+    rect.setOutlineThickness(2.0f);
+    rect.setOutlineColor(sf::Color::Black);
+    window_.draw(rect);
 }

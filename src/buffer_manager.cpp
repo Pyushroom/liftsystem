@@ -44,6 +44,15 @@ std::optional<Pallet> BufferManager::unloadForFloor(int floor) {
     return std::nullopt;
 }
 
+std::optional<Pallet> BufferManager::peekPalletForFloor(int floor) const {
+    for (const auto& pallet : pallets_) {
+        if (pallet.destinationFloor == floor) {
+            return pallet;
+        }
+    }
+    return std::nullopt;
+}
+
 const std::vector<Pallet>& BufferManager::pallets() const {
     return pallets_;
 }

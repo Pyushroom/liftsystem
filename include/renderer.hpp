@@ -4,12 +4,20 @@
 #include "simulator.hpp"
 #include "controller.hpp"
 
+struct InputState {
+    bool close = false;
+    bool togglePause = false;
+    bool emergencyStop = false;
+    bool resetEmergency = false;
+    bool addTask = false;
+};
+
 class Renderer {
 public:
     Renderer(unsigned int width = 1000, unsigned int height = 700);
 
     bool isOpen() const;
-    void processEvents();
+    InputState processEvents();
     void draw(const ElevatorSimulator& simulator, const ElevatorController& controller);
 
 private:
@@ -18,12 +26,11 @@ private:
     void drawFloors(const ElevatorSimulator& simulator);
     void drawElevator(const ElevatorSimulator& simulator);
     void drawPallets(const ElevatorSimulator& simulator, const ElevatorController& controller);
-
+    void drawTransferPallet(const ElevatorSimulator& simulator, const ElevatorController& controller);
     void drawUI(const ElevatorSimulator& simulator, const ElevatorController& controller);
 
 private:
     sf::RenderWindow window_;
-
     sf::Font font_;
 
     unsigned int width_;

@@ -19,17 +19,43 @@ int main() {
 
     constexpr double dt = 0.1;
 
+    bool paused = false;
+    int nextTaskId = 100;
+
     int tick = 0;
     while (renderer.isOpen() && tick < 230) {
         std::cout << "\n=== TICK " << tick << " ===\n";
 
-        renderer.processEvents();
+        InputState input = renderer.processEvents();
+
+        if (input.togglePause) {
+            paused = !paused;
+        }
+
+        if (input.emergencyStop) {
+            simulator.triggerEmergencyStop(true);
+        }
+
+        if (input.resetEmergency) {
+            simulator.triggerEmergencyStop(false);
+        }
+
+        if (input.addTask) {
+            int src = std::rand() % simulator.floors();
+            int dst = std::rand() % simulator.floors();
+
+            if (src != dst) {
+                controller.addTask({nextTaskId++, src, dst});
+            }
+        }
 
         simulator.setLoadStationReady(true);
         simulator.setUnloadStationReady(true);
 
-        controller.step();
-        simulator.update(dt);
+        if (!paused) {
+            controller.step(dt);
+            simulator.update(dt);
+        }
 
         renderer.draw(simulator, controller);
 

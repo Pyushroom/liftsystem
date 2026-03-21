@@ -1,34 +1,130 @@
-# Pallet Elevator Control System
+# 🚀 Pallet Elevator Control System (C++)
 
-C++ project for simulating and controlling an automatic pallet elevator operating between multiple warehouse floors.
+Simulation and control system for an automated pallet elevator operating between multiple floors.
 
-## Project goal
+---
 
-The goal of this project is to build a modular control system for a pallet elevator with:
+## 📌 Overview
 
-- elevator movement between floors
-- pallet transport task handling
-- pallet buffering on the elevator platform
-- simulation layer for testing without physical hardware
-- optional 2D visualization
+This project implements a **modular control system** for a pallet elevator, including:
 
-## Planned architecture
+* finite state machine (FSM) controller
+* task scheduler
+* pallet buffering system
+* hardware abstraction layer
+* physical simulation model
+* graphical visualization (SFML)
+* interactive controls
 
-The project will be developed incrementally and will include:
+The system simulates real-world industrial automation logic used in logistics and warehouse systems.
 
-- core domain types
-- hardware abstraction layer
-- transport task scheduler
-- pallet buffer management
-- elevator controller based on a finite state machine
-- physical simulation model
-- visualization layer
+---
 
-## Build
+## 🧠 Features
+
+### Control System
+
+* Elevator FSM (Idle, Moving, Loading, Unloading, Fault, Emergency)
+* Task scheduling for pallet transport
+* Buffer management for multiple pallets
+* Safety handling (emergency stop, door interlock)
+
+### Simulation
+
+* Continuous physical model (position + velocity)
+* Floor detection with tolerance
+* Time-based updates (`dt` simulation loop)
+
+### Visualization
+
+* Elevator shaft and floors
+* Moving cabin with platform alignment
+* Pallets rendered on the platform
+* UI panel with system state
+
+### UI / Interaction
+
+* Keyboard controls:
+
+  * `SPACE` – pause / resume
+  * `E` – emergency stop
+  * `R` – reset emergency stop
+  * `T` – add random transport task
+  * `ESC` – exit
+
+---
+
+## 🖥️ Demo
+
+The application opens a window showing:
+
+* elevator moving between floors
+* pallets being loaded and unloaded
+* real-time system state (floor, mode, target, pallet count)
+
+---
+
+## 🏗️ Architecture
+
+```
+Controller (FSM)
+│
+├── Scheduler        (task queue)
+├── BufferManager    (pallet storage)
+└── Hardware Interface (IElevatorHardware)
+        │
+        └── Simulator (physical model)
+                │
+                └── Renderer (SFML UI)
+```
+
+---
+
+## ⚙️ Technologies
+
+* C++20
+* SFML 3 (graphics)
+* CMake
+* vcpkg
+
+---
+
+## ▶️ Build & Run
+
+### 1. Configure
 
 ```bash
-mkdir build
-cd build
-cmake ..
-make
-./pallet_elevator
+cmake --preset mingw-debug
+```
+
+### 2. Build
+
+```bash
+cmake --build --preset mingw-debug
+```
+
+### 3. Run
+
+```bash
+./build/mingw-debug/my_project
+```
+
+
+---
+
+## 💡 What this project demonstrates
+
+* object-oriented system design
+* real-time control logic (FSM)
+* separation of concerns (logic / hardware / UI)
+* simulation of physical processes
+* building interactive tools in C++
+
+---
+
+## 📬 Author
+
+Pyushroom
+C++ / Embedded / Automation
+
+---

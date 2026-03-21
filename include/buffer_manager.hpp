@@ -34,6 +34,8 @@ public:
     // Remove pallet for given floor (if exists)
     std::optional<Pallet> unloadForFloor(int floor);
 
+    std::optional<Pallet> peekPalletForFloor(int floor) const;
+
     // Access all pallets (read-only)
     const std::vector<Pallet>& pallets() const;
 

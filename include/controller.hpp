@@ -4,42 +4,40 @@
 #include "scheduler.hpp"
 #include "buffer_manager.hpp"
 #include <cstddef>
+#include <optional>
 
-// ElevatorController is the main control unit of the system.
-//
-// Responsibilities:
-// - read inputs from hardware
-// - process logic (state machine)
-// - generate outputs
-// - coordinate scheduler and buffer
+struct TransferVisual {
+    bool active = false;
+    bool loading = false;
+    int palletId = -1;
+    int sourceFloor = 0;
+    int destinationFloor = 0;
+    double progress = 0.0;
+};
+
 class ElevatorController {
 public:
     ElevatorController(IElevatorHardware& hardware, std::size_t bufferCapacity);
 
-    // Add transport task to scheduler
     void addTask(const TransportTask& task);
-
-    // Main control loop step (called periodically)
-    void step();
+    void step(double dtSeconds);
 
     const BufferManager& buffer() const;
-
     ElevatorMode mode() const;
     int targetFloor() const;
+    TransferVisual transferVisual() const;
 
 private:
-    // Internal states of controller
     enum class PendingAction {
         None,
         Load,
         Unload
     };
 
-    // State handlers (to be implemented in next commits)
     void handleIdle(const Inputs& in, Outputs& out);
     void handleMoving(const Inputs& in, Outputs& out);
-    void handleLoading(const Inputs& in, Outputs& out);
-    void handleUnloading(const Inputs& in, Outputs& out);
+    void handleLoading(const Inputs& in, Outputs& out, double dtSeconds);
+    void handleUnloading(const Inputs& in, Outputs& out, double dtSeconds);
     void handleFault(Outputs& out);
     void handleEmergency(Outputs& out);
 
@@ -53,6 +51,11 @@ private:
 
     ElevatorMode mode_ = ElevatorMode::Idle;
     PendingAction pendingAction_ = PendingAction::None;
-
     int targetFloor_ = 0;
+
+    double transferElapsedSeconds_ = 0.0;
+    double loadDurationSeconds_ = 2.0;
+    double unloadDurationSeconds_ = 2.0;
+
+    TransferVisual transferVisual_{};
 };

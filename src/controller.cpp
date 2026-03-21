@@ -9,21 +9,30 @@ void ElevatorController::addTask(const TransportTask& task) {
     scheduler_.addTask(task);
 }
 
-void ElevatorController::step() {
-    // 1. Read inputs
+TransferVisual ElevatorController::transferVisual() const {
+    return transferVisual_;
+}
+
+void ElevatorController::step(double dtSeconds) {
     Inputs in = hardware_.readInputs();
 
-    // 2. Global safety checks
     if (in.emergencyStop) {
         mode_ = ElevatorMode::EmergencyStop;
-    } else if (in.driveFault) {
-        mode_ = ElevatorMode::Fault;
+    } else {
+        if (mode_ == ElevatorMode::EmergencyStop) {
+            mode_ = ElevatorMode::Idle;
+            targetFloor_ = hardware_.currentFloor();
+            transferElapsedSeconds_ = 0.0;
+            transferVisual_ = {};
+        }
+
+        if (in.driveFault) {
+            mode_ = ElevatorMode::Fault;
+        }
     }
 
-    // 3. Prepare outputs
     Outputs out{};
 
-    // 4. State machine
     switch (mode_) {
         case ElevatorMode::Idle:
             handleIdle(in, out);
@@ -34,11 +43,11 @@ void ElevatorController::step() {
             break;
 
         case ElevatorMode::Loading:
-            handleLoading(in, out);
+            handleLoading(in, out, dtSeconds);
             break;
 
         case ElevatorMode::Unloading:
-            handleUnloading(in, out);
+            handleUnloading(in, out, dtSeconds);
             break;
 
         case ElevatorMode::Fault:
@@ -50,7 +59,6 @@ void ElevatorController::step() {
             break;
     }
 
-    // 5. Apply outputs
     hardware_.applyOutputs(out);
     printStatus();
 }
@@ -62,16 +70,33 @@ void ElevatorController::step() {
 void ElevatorController::handleIdle(const Inputs&, Outputs&) {
     int currentFloor = hardware_.currentFloor();
 
-    // 1. Najpierw rozładuj to co już jest na windzie
     if (buffer_.hasPalletForFloor(currentFloor)) {
+        auto pallet = buffer_.peekPalletForFloor(currentFloor);
+        if (pallet.has_value()) {
+            transferElapsedSeconds_ = 0.0;
+            transferVisual_.active = true;
+            transferVisual_.loading = false;
+            transferVisual_.palletId = pallet->id;
+            transferVisual_.sourceFloor = currentFloor;
+            transferVisual_.destinationFloor = currentFloor;
+            transferVisual_.progress = 0.0;
+        }
+
         mode_ = ElevatorMode::Unloading;
         return;
     }
 
-    // 2. Obsłuż nowe zadanie (załadunek)
     auto task = scheduler_.currentTask();
     if (task.has_value()) {
         if (currentFloor == task->sourceFloor && buffer_.canLoad()) {
+            transferElapsedSeconds_ = 0.0;
+            transferVisual_.active = true;
+            transferVisual_.loading = true;
+            transferVisual_.palletId = task->palletId;
+            transferVisual_.sourceFloor = task->sourceFloor;
+            transferVisual_.destinationFloor = task->destinationFloor;
+            transferVisual_.progress = 0.0;
+
             mode_ = ElevatorMode::Loading;
             return;
         }
@@ -83,7 +108,6 @@ void ElevatorController::handleIdle(const Inputs&, Outputs&) {
         }
     }
 
-    // 3. Jeśli mamy palety, ale nie na tym piętrze → jedź je rozładować
     if (!buffer_.empty()) {
         targetFloor_ = chooseNextTarget(currentFloor);
         if (targetFloor_ != currentFloor) {
@@ -120,18 +144,22 @@ void ElevatorController::handleMoving(const Inputs& in, Outputs& out) {
     }
 }
 
-void ElevatorController::handleLoading(const Inputs& in, Outputs& out) {
+void ElevatorController::handleLoading(const Inputs&, Outputs& out, double dtSeconds) {
     out.doorOpen = true;
     out.conveyorLoad = true;
 
     auto task = scheduler_.currentTask();
     if (!task.has_value()) {
+        transferElapsedSeconds_ = 0.0;
+        transferVisual_ = {};
         mode_ = ElevatorMode::Idle;
         return;
     }
 
-    // Symulacja: jeśli stacja gotowa → załaduj paletę
-    if (in.loadStationReady && buffer_.canLoad()) {
+    transferElapsedSeconds_ += dtSeconds;
+    transferVisual_.progress = std::min(transferElapsedSeconds_ / loadDurationSeconds_, 1.0);
+
+    if (transferElapsedSeconds_ >= loadDurationSeconds_) {
         buffer_.loadPallet(Pallet{
             task->palletId,
             task->sourceFloor,
@@ -144,17 +172,22 @@ void ElevatorController::handleLoading(const Inputs& in, Outputs& out) {
 
         scheduler_.completeCurrentTask();
 
+        transferElapsedSeconds_ = 0.0;
+        transferVisual_ = {};
         mode_ = ElevatorMode::Idle;
     }
 }
 
-void ElevatorController::handleUnloading(const Inputs& in, Outputs& out) {
+void ElevatorController::handleUnloading(const Inputs&, Outputs& out, double dtSeconds) {
     out.doorOpen = true;
     out.conveyorUnload = true;
 
     int currentFloor = hardware_.currentFloor();
 
-    if (in.unloadStationReady) {
+    transferElapsedSeconds_ += dtSeconds;
+    transferVisual_.progress = std::min(transferElapsedSeconds_ / unloadDurationSeconds_, 1.0);
+
+    if (transferElapsedSeconds_ >= unloadDurationSeconds_) {
         auto pallet = buffer_.unloadForFloor(currentFloor);
 
         if (pallet.has_value()) {
@@ -162,6 +195,8 @@ void ElevatorController::handleUnloading(const Inputs& in, Outputs& out) {
                       << " unloaded at floor " << currentFloor << "\n";
         }
 
+        transferElapsedSeconds_ = 0.0;
+        transferVisual_ = {};
         mode_ = ElevatorMode::Idle;
     }
 }
