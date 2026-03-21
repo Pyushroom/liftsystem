@@ -23,6 +23,7 @@ set(SOURCES
     src/controller.cpp
     src/simulator.cpp
     src/renderer.cpp
+    src/floor_manager.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
