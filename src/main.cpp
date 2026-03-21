@@ -10,12 +10,13 @@ int main() {
     std::cout << "Starting pallet elevator simulation...\n";
 
     ElevatorSimulator simulator(5);
-    ElevatorController controller(simulator, 3);
+    FloorManager floorManager(5);
+    ElevatorController controller(simulator, floorManager, 3);
     Renderer renderer(1000, 700);
 
-    controller.addTask({1, 0, 3});
-    controller.addTask({2, 1, 4});
-    controller.addTask({3, 2, 0});
+    floorManager.addWaitingPallet({1, 0, 3});
+    floorManager.addWaitingPallet({2, 1, 4});
+    floorManager.addWaitingPallet({3, 2, 0});
 
     constexpr double dt = 0.1;
 
@@ -23,7 +24,7 @@ int main() {
     int nextTaskId = 100;
 
     int tick = 0;
-    while (renderer.isOpen() && tick < 230) {
+    while (renderer.isOpen() && tick < 400) {
         std::cout << "\n=== TICK " << tick << " ===\n";
 
         InputState input = renderer.processEvents();
@@ -45,7 +46,7 @@ int main() {
             int dst = std::rand() % simulator.floors();
 
             if (src != dst) {
-                controller.addTask({nextTaskId++, src, dst});
+                floorManager.addWaitingPallet({nextTaskId++, src, dst});
             }
         }
 

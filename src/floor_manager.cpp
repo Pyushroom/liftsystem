@@ -57,6 +57,15 @@ std::optional<Pallet> FloorManager::popWaitingPalletAtFloor(int floor) {
     return pallet;
 }
 
+std::optional<int> FloorManager::findNextFloorWithWaitingPallet() const {
+    for (std::size_t i = 0; i < floors_.size(); ++i) {
+        if (!floors_[i].waiting.empty()) {
+            return static_cast<int>(i);
+        }
+    }
+    return std::nullopt;
+}
+
 bool FloorManager::canAcceptDeliveredPallet(int floor) const {
     if (!isValidFloor(floor)) {
         return false;

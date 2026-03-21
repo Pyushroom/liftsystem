@@ -23,6 +23,8 @@ public:
     // Remove first waiting pallet from a floor
     std::optional<Pallet> popWaitingPalletAtFloor(int floor);
 
+    std::optional<int> findNextFloorWithWaitingPallet() const;
+
     // Delivered/output station handling
     bool canAcceptDeliveredPallet(int floor) const;
     void storeDeliveredPallet(int floor, const Pallet& pallet);

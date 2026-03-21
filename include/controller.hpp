@@ -3,6 +3,7 @@
 #include "hardware.hpp"
 #include "scheduler.hpp"
 #include "buffer_manager.hpp"
+#include "floor_manager.hpp"
 #include <cstddef>
 #include <optional>
 
@@ -17,7 +18,9 @@ struct TransferVisual {
 
 class ElevatorController {
 public:
-    ElevatorController(IElevatorHardware& hardware, std::size_t bufferCapacity);
+    ElevatorController(IElevatorHardware& hardware,
+                   FloorManager& floorManager,
+                   std::size_t bufferCapacity);
 
     void addTask(const TransportTask& task);
     void step(double dtSeconds);
@@ -46,6 +49,8 @@ private:
 
 private:
     IElevatorHardware& hardware_;
+    FloorManager& floorManager_;
+    
     Scheduler scheduler_;
     BufferManager buffer_;
 

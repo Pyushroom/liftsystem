@@ -1,8 +1,11 @@
 #include "controller.hpp"
 #include <iostream>
 
-ElevatorController::ElevatorController(IElevatorHardware& hardware, std::size_t bufferCapacity)
+ElevatorController::ElevatorController(IElevatorHardware& hardware,
+                                       FloorManager& floorManager,
+                                       std::size_t bufferCapacity)
     : hardware_(hardware),
+      floorManager_(floorManager),
       buffer_(bufferCapacity) {}
 
 void ElevatorController::addTask(const TransportTask& task) {
@@ -68,51 +71,52 @@ void ElevatorController::step(double dtSeconds) {
 // ==========================
 
 void ElevatorController::handleIdle(const Inputs&, Outputs&) {
-    int currentFloor = hardware_.currentFloor();
+    const int currentFloor = hardware_.currentFloor();
 
+    // 1. Jeśli mamy paletę do rozładunku na tym piętrze
     if (buffer_.hasPalletForFloor(currentFloor)) {
         auto pallet = buffer_.peekPalletForFloor(currentFloor);
         if (pallet.has_value()) {
             transferElapsedSeconds_ = 0.0;
-            transferVisual_.active = true;
-            transferVisual_.loading = false;
-            transferVisual_.palletId = pallet->id;
-            transferVisual_.sourceFloor = currentFloor;
-            transferVisual_.destinationFloor = currentFloor;
-            transferVisual_.progress = 0.0;
+            transferVisual_ = {
+                true,
+                false,
+                pallet->id,
+                currentFloor,
+                currentFloor,
+                0.0
+            };
         }
 
         mode_ = ElevatorMode::Unloading;
         return;
     }
 
-    auto task = scheduler_.currentTask();
-    if (task.has_value()) {
-        if (currentFloor == task->sourceFloor && buffer_.canLoad()) {
+    // 2. Jeśli na tym piętrze czeka paleta i mamy miejsce
+    if (floorManager_.hasWaitingPalletAtFloor(currentFloor) && buffer_.canLoad()) {
+        auto pallet = floorManager_.peekWaitingPalletAtFloor(currentFloor);
+
+        if (pallet.has_value()) {
             transferElapsedSeconds_ = 0.0;
-            transferVisual_.active = true;
-            transferVisual_.loading = true;
-            transferVisual_.palletId = task->palletId;
-            transferVisual_.sourceFloor = task->sourceFloor;
-            transferVisual_.destinationFloor = task->destinationFloor;
-            transferVisual_.progress = 0.0;
+            transferVisual_ = {
+                true,
+                true,
+                pallet->id,
+                pallet->sourceFloor,
+                pallet->destinationFloor,
+                0.0
+            };
 
             mode_ = ElevatorMode::Loading;
             return;
         }
-
-        if (currentFloor != task->sourceFloor) {
-            targetFloor_ = task->sourceFloor;
-            mode_ = ElevatorMode::Moving;
-            return;
-        }
     }
 
-    if (!buffer_.empty()) {
-        targetFloor_ = chooseNextTarget(currentFloor);
-        if (targetFloor_ != currentFloor) {
-            mode_ = ElevatorMode::Moving;
-        }
+    // 3. Jeśli są jeszcze palety do dostarczenia albo odebrania, wybierz cel
+    const int target = chooseNextTarget(currentFloor);
+    if (target != currentFloor) {
+        targetFloor_ = target;
+        mode_ = ElevatorMode::Moving;
     }
 }
 
@@ -148,29 +152,24 @@ void ElevatorController::handleLoading(const Inputs&, Outputs& out, double dtSec
     out.doorOpen = true;
     out.conveyorLoad = true;
 
-    auto task = scheduler_.currentTask();
-    if (!task.has_value()) {
-        transferElapsedSeconds_ = 0.0;
-        transferVisual_ = {};
-        mode_ = ElevatorMode::Idle;
-        return;
-    }
-
     transferElapsedSeconds_ += dtSeconds;
     transferVisual_.progress = std::min(transferElapsedSeconds_ / loadDurationSeconds_, 1.0);
 
     if (transferElapsedSeconds_ >= loadDurationSeconds_) {
-        buffer_.loadPallet(Pallet{
-            task->palletId,
-            task->sourceFloor,
-            task->destinationFloor
-        });
+        auto pallet = floorManager_.popWaitingPalletAtFloor(hardware_.currentFloor());
 
-        std::cout << "[LOAD] Pallet " << task->palletId
-                  << " loaded at floor " << task->sourceFloor
-                  << " -> target " << task->destinationFloor << "\n";
+        if (!pallet.has_value()) {
+            transferElapsedSeconds_ = 0.0;
+            transferVisual_ = {};
+            mode_ = ElevatorMode::Idle;
+            return;
+        }
 
-        scheduler_.completeCurrentTask();
+        buffer_.loadPallet(*pallet);
+
+        std::cout << "[LOAD] Pallet " << pallet->id
+                  << " loaded at floor " << pallet->sourceFloor
+                  << " -> target " << pallet->destinationFloor << "\n";
 
         transferElapsedSeconds_ = 0.0;
         transferVisual_ = {};
@@ -187,12 +186,16 @@ void ElevatorController::handleUnloading(const Inputs&, Outputs& out, double dtS
     transferElapsedSeconds_ += dtSeconds;
     transferVisual_.progress = std::min(transferElapsedSeconds_ / unloadDurationSeconds_, 1.0);
 
-    if (transferElapsedSeconds_ >= unloadDurationSeconds_) {
+        if (transferElapsedSeconds_ >= unloadDurationSeconds_) {
         auto pallet = buffer_.unloadForFloor(currentFloor);
 
         if (pallet.has_value()) {
-            std::cout << "[UNLOAD] Pallet " << pallet->id
-                      << " unloaded at floor " << currentFloor << "\n";
+            if (floorManager_.canAcceptDeliveredPallet(currentFloor)) {
+                floorManager_.storeDeliveredPallet(currentFloor, *pallet);
+
+                std::cout << "[UNLOAD] Pallet " << pallet->id
+                        << " delivered at floor " << currentFloor << "\n";
+            }
         }
 
         transferElapsedSeconds_ = 0.0;
@@ -218,17 +221,17 @@ void ElevatorController::handleEmergency(Outputs& out) {
 }
 
 int ElevatorController::chooseNextTarget(int currentFloor) const {
-    // Jeśli mamy palety → jedź do pierwszego celu
+    // 1. Najpierw dostarcz to, co już jest na windzie
     if (!buffer_.empty()) {
         for (const auto& pallet : buffer_.pallets()) {
             return pallet.destinationFloor;
         }
     }
 
-    // Jeśli nie, jedź po nowe zadanie
-    auto task = scheduler_.currentTask();
-    if (task.has_value()) {
-        return task->sourceFloor;
+    // 2. Potem jedź po najbliższą oczekującą paletę
+    auto nextWaitingFloor = floorManager_.findNextFloorWithWaitingPallet();
+    if (nextWaitingFloor.has_value()) {
+        return *nextWaitingFloor;
     }
 
     return currentFloor;
