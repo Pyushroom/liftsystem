@@ -6,6 +6,10 @@ Renderer::Renderer(unsigned int width, unsigned int height)
       width_(width),
       height_(height) {
     window_.setFramerateLimit(60);
+
+    if (!font_.openFromFile("assets/arial.ttf")) {
+        throw std::runtime_error("Failed to load font");
+    }
 }
 
 bool Renderer::isOpen() const {
@@ -186,23 +190,27 @@ void Renderer::drawUI(const ElevatorSimulator& simulator,
     const int target = controller.targetFloor();
     const int palletCount = static_cast<int>(controller.buffer().size());
 
+    const std::string modeStr = toString(controller.mode());
+
     // Debug info jako prostokąty (placeholder UI)
     float y = shaftTop_ + 20.0f;
 
-    auto drawBar = [&](float value, sf::Color color) {
-        sf::RectangleShape bar(sf::Vector2f(value, 20.0f));
-        bar.setPosition(sf::Vector2f(470.0f, y));
-        bar.setFillColor(color);
-        window_.draw(bar);
+    auto drawText = [&](const std::string& label) {
+        sf::Text text(font_);
+        text.setString(label);
+        text.setCharacterSize(18);
+        text.setFillColor(sf::Color::White);
+        text.setPosition(sf::Vector2f(470.0f, y));
+
+        window_.draw(text);
         y += 30.0f;
     };
 
-    // Floor (zielony)
-    drawBar(static_cast<float>(floor) * 40.0f, sf::Color(60, 170, 90));
+    drawText("Elevator Status");
+    y += 10.0f;
 
-    // Target (niebieski)
-    drawBar(static_cast<float>(target) * 40.0f, sf::Color(80, 120, 220));
-
-    // Pallets (brązowy)
-    drawBar(static_cast<float>(palletCount) * 40.0f, sf::Color(160, 110, 60));
+    drawText("Floor: " + std::to_string(floor));
+    drawText("Target: " + std::to_string(target));
+    drawText("Mode: " + modeStr);
+    drawText("Pallets: " + std::to_string(palletCount));
 }

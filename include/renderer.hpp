@@ -24,6 +24,8 @@ private:
 private:
     sf::RenderWindow window_;
 
+    sf::Font font_;
+
     unsigned int width_;
     unsigned int height_;
 
