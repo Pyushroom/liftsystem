@@ -3,6 +3,7 @@
 #include <SFML/Graphics.hpp>
 #include "simulator.hpp"
 #include "controller.hpp"
+#include "floor_manager.hpp"
 
 struct InputState {
     bool close = false;
@@ -18,7 +19,9 @@ public:
 
     bool isOpen() const;
     InputState processEvents();
-    void draw(const ElevatorSimulator& simulator, const ElevatorController& controller);
+    void draw(const ElevatorSimulator& simulator,
+          const ElevatorController& controller,
+          const FloorManager& floorManager);
 
 private:
     float floorY(int floor, int totalFloors) const;
@@ -27,6 +30,7 @@ private:
     void drawElevator(const ElevatorSimulator& simulator);
     void drawPallets(const ElevatorSimulator& simulator, const ElevatorController& controller);
     void drawTransferPallet(const ElevatorSimulator& simulator, const ElevatorController& controller);
+    void drawFloorQueues(const FloorManager& floorManager);
     void drawUI(const ElevatorSimulator& simulator, const ElevatorController& controller);
 
 private:

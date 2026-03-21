@@ -24,7 +24,7 @@ int main() {
     int nextTaskId = 100;
 
     int tick = 0;
-    while (renderer.isOpen() && tick < 400) {
+    while (renderer.isOpen() && tick < 2000) {
         std::cout << "\n=== TICK " << tick << " ===\n";
 
         InputState input = renderer.processEvents();
@@ -58,7 +58,7 @@ int main() {
             simulator.update(dt);
         }
 
-        renderer.draw(simulator, controller);
+        renderer.draw(simulator, controller, floorManager);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         ++tick;
